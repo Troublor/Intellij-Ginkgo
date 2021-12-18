@@ -1,12 +1,13 @@
 package com.github.idea.ginkgo.gotest;
 
-import com.github.idea.ginkgo.GinkgoRunConfigurationOptions;
-import com.github.idea.ginkgo.scope.GinkgoScope;
+import com.goide.execution.GoBuildingRunConfiguration;
 import com.goide.execution.testing.GoTestRunConfiguration;
 import com.goide.execution.testing.frameworks.gotest.GotestRunConfigurationProducer;
 import com.goide.psi.GoCallExpr;
+import com.goide.psi.GoFile;
 import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -17,23 +18,31 @@ public class GinkgoGoTestRunConfigurationProducer extends GotestRunConfiguration
 
     @Override
     protected boolean doSetupConfigurationFromContext(@NotNull GoTestRunConfiguration config, @NotNull ConfigurationContext context, @NotNull PsiElement contextElement) {
-        List<String> specNames = getSpecNames(context);
-
-        GinkgoRunConfigurationOptions ginkgoOptions = new GinkgoRunConfigurationOptions();
-        ginkgoOptions.setWorkingDir(context.getPsiLocation().getContainingFile().getContainingDirectory().getVirtualFile().getPath());
-        ginkgoOptions.setGinkgoScope(GinkgoScope.FOCUS);
-        ginkgoOptions.setTestNames(specNames);
-        ginkgoOptions.setFocusTestExpression(String.join(" ", specNames));
-
-        config.setWorkingDirectory(ginkgoOptions.getWorkingDir());
-        if (ginkgoOptions.getEnvData() != null) {
-            config.setCustomEnvironment(ginkgoOptions.getEnvData().getEnvs());
+        if (context.getPsiLocation() == null) {
+            return false;
         }
-        config.setParams(String.format("--ginkgo.focus=\"%s\"", ginkgoOptions.getFocusTestExpression()));
-        if (ginkgoOptions.getTestNames().isEmpty()) {
+
+        PsiFile file = context.getPsiLocation().getContainingFile();
+        if (!(file instanceof GoFile)) {
+            return false;
+        }
+        String importPath = ((GoFile) file).getImportPath(false);
+        if (importPath == null) {
+            return false;
+        }
+
+        List<String> specNames = getSpecNames(context);
+        String testExpression = String.join(" ", specNames);
+        String workingDir = file.getContainingDirectory().getVirtualFile().getPath();
+
+        config.setKind(GoBuildingRunConfiguration.Kind.PACKAGE);
+        config.setPackage(importPath);
+        config.setWorkingDirectory(workingDir);
+        config.setParams(String.format("--ginkgo.focus=\"%s\"", testExpression));
+        if (specNames.isEmpty()) {
             config.setName("All Test");
         } else {
-            config.setName(String.join(" ", ginkgoOptions.getTestNames()));
+            config.setName(testExpression);
         }
         return true;
     }
