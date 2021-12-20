@@ -13,7 +13,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 
 public class GinkgoGoTestRunConfigurationProducer extends GotestRunConfigurationProducer {
-    public static final String GINKGO = "Ginkgo";
     public static final String WHEN = "when";
 
     @Override
@@ -38,7 +37,9 @@ public class GinkgoGoTestRunConfigurationProducer extends GotestRunConfiguration
         config.setKind(GoBuildingRunConfiguration.Kind.PACKAGE);
         config.setPackage(importPath);
         config.setWorkingDirectory(workingDir);
-        config.setParams(String.format("--ginkgo.focus=\"%s\"", testExpression));
+        if (!specNames.isEmpty()) {
+            config.setParams(String.format("--ginkgo.focus=\"%s\"", testExpression));
+        }
         if (specNames.isEmpty()) {
             config.setName("All Test");
         } else {
@@ -70,6 +71,6 @@ public class GinkgoGoTestRunConfigurationProducer extends GotestRunConfiguration
             }
         }
 
-        return specTree.isEmpty() ? Arrays.asList(GINKGO) : new ArrayList<>(specTree);
+        return specTree.isEmpty() ? new ArrayList<>() : new ArrayList<>(specTree);
     }
 }
